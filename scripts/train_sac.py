@@ -38,6 +38,7 @@ def build_model(
     total_timesteps: int,
     max_steps: int,
 ) -> SAC:
+    buffer_size = min(total_timesteps, max_steps * 50)
     policy_kwargs = {
         "features_extractor_class": PaintCNNFeaturesExtractor,
         "features_extractor_kwargs": {"features_dim": 256},
@@ -50,7 +51,7 @@ def build_model(
         verbose=1,
         seed=seed,
         learning_starts=min(100, total_timesteps // 10),
-        buffer_size=max_steps * 50,
+        buffer_size=buffer_size,
         batch_size=max(2, min(64, total_timesteps)),
     )
 
