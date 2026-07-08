@@ -40,6 +40,7 @@ class TrianglePaintEnv(gym.Env):
 
         self.target = self._prepare_target(target_image)
         self.canvas = np.ones_like(self.target, dtype=np.float32)
+        self.coordinate_channels = self._make_coordinate_channels()
         self.current_step = 0
         self.current_mse = self._mse()
 
@@ -52,7 +53,7 @@ class TrianglePaintEnv(gym.Env):
         self.observation_space = spaces.Box(
             low=0.0,
             high=1.0,
-            shape=(9, self.image_size, self.image_size),
+            shape=(11, self.image_size, self.image_size),
             dtype=np.float32,
         )
 
@@ -108,9 +109,16 @@ class TrianglePaintEnv(gym.Env):
                 self.canvas.transpose(2, 0, 1),
                 self.target.transpose(2, 0, 1),
                 diff.transpose(2, 0, 1),
+                self.coordinate_channels,
             ],
             axis=0,
         ).astype(np.float32)
+
+    def _make_coordinate_channels(self) -> np.ndarray:
+        axis = np.linspace(0.0, 1.0, self.image_size, dtype=np.float32)
+        x_grid = np.tile(axis, (self.image_size, 1))
+        y_grid = np.tile(axis[:, None], (1, self.image_size))
+        return np.stack([x_grid, y_grid], axis=0).astype(np.float32)
 
     def _draw_triangle(self, action: np.ndarray) -> None:
         clipped = np.clip(action, 0.0, 1.0)

@@ -9,10 +9,21 @@ def test_reset_returns_canvas_target_and_diff_channels():
 
     observation, info = env.reset(seed=123)
 
-    assert observation.shape == (9, 16, 16)
+    assert observation.shape == (11, 16, 16)
     assert observation.dtype == np.float32
     assert np.all((observation >= 0.0) & (observation <= 1.0))
     assert info["mse"] == np.float32(1.0)
+
+
+def test_observation_includes_absolute_coordinate_channels():
+    target = np.zeros((4, 4, 3), dtype=np.float32)
+    env = TrianglePaintEnv(target_image=target, image_size=4, max_steps=5)
+
+    observation, _ = env.reset(seed=123)
+
+    expected_axis = np.linspace(0.0, 1.0, 4, dtype=np.float32)
+    np.testing.assert_allclose(observation[9], np.tile(expected_axis, (4, 1)))
+    np.testing.assert_allclose(observation[10], np.tile(expected_axis[:, None], (1, 4)))
 
 
 def test_step_draws_triangle_and_rewards_mse_improvement():
@@ -38,7 +49,7 @@ def test_step_draws_triangle_and_rewards_mse_improvement():
     )
     observation, reward, terminated, truncated, info = env.step(action)
 
-    assert observation.shape == (9, 16, 16)
+    assert observation.shape == (11, 16, 16)
     assert env.canvas.mean() > 0.0
     assert reward == np.float32(old_mse - env.current_mse)
     assert info["step"] == 1

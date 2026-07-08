@@ -3,10 +3,10 @@
 PaintRL is a minimal reinforcement learning prototype that paints a target image
 by adding one transparent triangle per environment step.
 
-The first version uses:
+The current version uses:
 
 - `Gymnasium` for the custom environment.
-- `Stable-Baselines3` SAC for continuous control.
+- `Stable-Baselines3` SAC for continuous control with a custom CNN feature extractor.
 - `Pillow` and `OpenCV` for image loading and triangle rendering.
 
 ## Install
@@ -53,11 +53,12 @@ Outputs include:
 
 ## Environment
 
-`TrianglePaintEnv` observes a 9-channel image tensor:
+`TrianglePaintEnv` observes an 11-channel image tensor:
 
 - Current canvas RGB.
 - Target image RGB.
 - Absolute difference RGB.
+- Absolute x/y coordinate channels.
 
 Each action is a 10-value continuous vector:
 

@@ -1,13 +1,19 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 from stable_baselines3 import SAC
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.monitor import Monitor
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from paint_rl.envs import TrianglePaintEnv
+from paint_rl.models import PaintCNNFeaturesExtractor
 from paint_rl.utils.image import load_target_image, save_canvas
 from scripts.random_demo import make_demo_target
 
@@ -22,6 +28,29 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--check-env", action="store_true")
     return parser.parse_args()
+
+
+def build_model(
+    env: Monitor,
+    seed: int,
+    total_timesteps: int,
+    max_steps: int,
+) -> SAC:
+    policy_kwargs = {
+        "features_extractor_class": PaintCNNFeaturesExtractor,
+        "features_extractor_kwargs": {"features_dim": 256},
+        "normalize_images": False,
+    }
+    return SAC(
+        "MlpPolicy",
+        env,
+        policy_kwargs=policy_kwargs,
+        verbose=1,
+        seed=seed,
+        learning_starts=min(100, total_timesteps // 10),
+        buffer_size=max_steps * 50,
+        batch_size=max(2, min(64, total_timesteps)),
+    )
 
 
 def main() -> None:
@@ -42,14 +71,11 @@ def main() -> None:
         check_env(env, warn=True)
 
     monitored_env = Monitor(env)
-    model = SAC(
-        "MlpPolicy",
+    model = build_model(
         monitored_env,
-        verbose=1,
         seed=args.seed,
-        learning_starts=min(100, args.total_timesteps // 10),
-        buffer_size=max(1_000, args.total_timesteps),
-        batch_size=max(2, min(64, args.total_timesteps)),
+        total_timesteps=args.total_timesteps,
+        max_steps=args.max_steps,
     )
     model.learn(total_timesteps=args.total_timesteps)
 
