@@ -17,6 +17,8 @@ class TrianglePaintEnv(gym.Env):
         self,
         target_image: np.ndarray,
         image_size: int = 64,
+        image_width: int | None = None,
+        image_height: int | None = None,
         max_steps: int = 200,
         reward_scale: float = 1000.0,
         alpha_min: float = 0.05,
@@ -24,14 +26,28 @@ class TrianglePaintEnv(gym.Env):
         success_mse: float = 1e-4,
     ) -> None:
         super().__init__()
-        if image_size <= 0:
-            raise ValueError("image_size must be positive")
+        if image_width is None and image_height is None:
+            if image_size <= 0:
+                raise ValueError("image_size must be positive")
+            image_width = image_size
+            image_height = image_size
+        elif image_width is None:
+            image_width = image_height
+        elif image_height is None:
+            image_height = image_width
+
+        if image_width is None or image_height is None:
+            raise ValueError("image_width and image_height must be resolved")
+        if image_width <= 0 or image_height <= 0:
+            raise ValueError("image_width and image_height must be positive")
         if max_steps <= 0:
             raise ValueError("max_steps must be positive")
         if not 0.0 <= alpha_min <= alpha_max <= 1.0:
             raise ValueError("alpha range must satisfy 0 <= alpha_min <= alpha_max <= 1")
 
         self.image_size = image_size
+        self.image_width = image_width
+        self.image_height = image_height
         self.max_steps = max_steps
         self.reward_scale = np.float32(reward_scale)
         self.alpha_min = np.float32(alpha_min)
@@ -53,7 +69,7 @@ class TrianglePaintEnv(gym.Env):
         self.observation_space = spaces.Box(
             low=0.0,
             high=1.0,
-            shape=(11, self.image_size, self.image_size),
+            shape=(11, self.image_height, self.image_width),
             dtype=np.float32,
         )
 
@@ -94,10 +110,10 @@ class TrianglePaintEnv(gym.Env):
             raise ValueError("target_image must have shape H x W x 3")
         if target.max(initial=0.0) > 1.0:
             target = target / 255.0
-        if target.shape[:2] != (self.image_size, self.image_size):
+        if target.shape[:2] != (self.image_height, self.image_width):
             target = cv2.resize(
                 target,
-                (self.image_size, self.image_size),
+                (self.image_width, self.image_height),
                 interpolation=cv2.INTER_AREA,
             )
         return np.clip(target, 0.0, 1.0).astype(np.float32)
@@ -115,9 +131,10 @@ class TrianglePaintEnv(gym.Env):
         ).astype(np.float32)
 
     def _make_coordinate_channels(self) -> np.ndarray:
-        axis = np.linspace(0.0, 1.0, self.image_size, dtype=np.float32)
-        x_grid = np.tile(axis, (self.image_size, 1))
-        y_grid = np.tile(axis[:, None], (1, self.image_size))
+        x_axis = np.linspace(0.0, 1.0, self.image_width, dtype=np.float32)
+        y_axis = np.linspace(0.0, 1.0, self.image_height, dtype=np.float32)
+        x_grid = np.tile(x_axis, (self.image_height, 1))
+        y_grid = np.tile(y_axis[:, None], (1, self.image_width))
         return np.stack([x_grid, y_grid], axis=0).astype(np.float32)
 
     def _draw_triangle(self, action: np.ndarray) -> None:
@@ -127,8 +144,10 @@ class TrianglePaintEnv(gym.Env):
         alpha_unit = clipped[9]
         alpha = self.alpha_min + alpha_unit * (self.alpha_max - self.alpha_min)
 
-        pixel_points = np.rint(points * (self.image_size - 1)).astype(np.int32)
-        mask = np.zeros((self.image_size, self.image_size), dtype=np.uint8)
+        x_points = np.rint(points[:, 0] * (self.image_width - 1))
+        y_points = np.rint(points[:, 1] * (self.image_height - 1))
+        pixel_points = np.stack([x_points, y_points], axis=1).astype(np.int32)
+        mask = np.zeros((self.image_height, self.image_width), dtype=np.uint8)
         cv2.fillPoly(mask, [pixel_points], 1)
         mask_bool = mask.astype(bool)
         if not mask_bool.any():

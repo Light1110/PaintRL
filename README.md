@@ -31,6 +31,12 @@ Use your own target image:
 python -m scripts.random_demo --target path\to\mona_lisa.png --output outputs/random_mona.png
 ```
 
+Run with a non-square canvas:
+
+```powershell
+python -m scripts.random_demo --image-width 96 --image-height 64 --steps 200 --output outputs/random_demo_96x64.png
+```
+
 ## Train SAC
 
 Run a short training job with the built-in demo target:
@@ -44,6 +50,18 @@ Train against a custom target image:
 ```powershell
 python -m scripts.train_sac --target path\to\mona_lisa.png --total-timesteps 10000 --output-dir outputs/mona_sac
 ```
+
+Train on a non-square canvas:
+
+```powershell
+python -m scripts.train_sac --image-width 96 --image-height 64 --total-timesteps 10000 --output-dir outputs/sac_96x64
+```
+
+Resolution arguments:
+
+- `--image-width` and `--image-height` define the canvas resolution.
+- `--image-size` remains as a backward-compatible square shortcut.
+- If only one of `--image-width`/`--image-height` is provided, the other defaults to the same value.
 
 Outputs include:
 

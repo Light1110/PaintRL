@@ -23,6 +23,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--target", type=Path, default=None, help="Path to target image.")
     parser.add_argument("--output-dir", type=Path, default=Path("outputs/sac"))
     parser.add_argument("--image-size", type=int, default=64)
+    parser.add_argument("--image-width", type=int, default=None)
+    parser.add_argument("--image-height", type=int, default=None)
     parser.add_argument("--max-steps", type=int, default=200)
     parser.add_argument("--total-timesteps", type=int, default=10_000)
     parser.add_argument("--seed", type=int, default=0)
@@ -53,18 +55,44 @@ def build_model(
     )
 
 
+def resolve_dimensions(args: argparse.Namespace) -> tuple[int, int]:
+    image_width = args.image_width
+    image_height = args.image_height
+    if image_width is None and image_height is None:
+        image_width = args.image_size
+        image_height = args.image_size
+    elif image_width is None:
+        image_width = image_height
+    elif image_height is None:
+        image_height = image_width
+
+    if image_width is None or image_height is None:
+        raise ValueError("image dimensions must be resolved")
+    if image_width <= 0 or image_height <= 0:
+        raise ValueError("image_width and image_height must be positive")
+    return image_width, image_height
+
+
 def main() -> None:
     args = parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
+    image_width, image_height = resolve_dimensions(args)
 
     target = (
-        load_target_image(args.target, args.image_size)
+        load_target_image(
+            args.target,
+            image_size=args.image_size,
+            image_width=image_width,
+            image_height=image_height,
+        )
         if args.target
-        else make_demo_target(args.image_size)
+        else make_demo_target(image_width, image_height)
     )
     env = TrianglePaintEnv(
         target_image=target,
         image_size=args.image_size,
+        image_width=image_width,
+        image_height=image_height,
         max_steps=args.max_steps,
     )
     if args.check_env:
