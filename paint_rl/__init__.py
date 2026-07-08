@@ -1,0 +1,2 @@
+"""PaintRL package."""
+
