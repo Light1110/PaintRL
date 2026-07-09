@@ -99,7 +99,10 @@ class TrianglePaintEnv(gym.Env):
         reward = np.float32((old_mse - self.current_mse) * self.reward_scale)
         terminated = bool(self.current_mse <= self.success_mse)
         truncated = bool(self.current_step >= self.max_steps and not terminated)
-        return self._observation(), reward, terminated, truncated, self._info()
+        info = self._info()
+        if terminated or truncated:
+            info["terminal_canvas"] = np.copy(self.canvas)
+        return self._observation(), reward, terminated, truncated, info
 
     def render(self) -> np.ndarray:
         return np.clip(self.canvas * 255.0, 0, 255).astype(np.uint8)

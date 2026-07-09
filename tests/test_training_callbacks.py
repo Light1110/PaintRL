@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import numpy as np
+from PIL import Image
 from stable_baselines3.common.monitor import Monitor
 
 from paint_rl.envs import TrianglePaintEnv
@@ -38,6 +39,38 @@ def test_episode_canvas_snapshot_callback_disabled_when_interval_zero(tmp_path: 
     model.learn(total_timesteps=12, callback=callback)
 
     assert not (tmp_path / "snapshots").exists()
+
+
+def test_episode_canvas_snapshot_callback_prefers_terminal_canvas(tmp_path: Path):
+    class DummyEnv:
+        canvas = np.ones((4, 4, 3), dtype=np.float32)
+
+    class DummyTrainingEnv:
+        envs = [DummyEnv()]
+
+    class DummyModel:
+        def get_env(self) -> DummyTrainingEnv:
+            return DummyTrainingEnv()
+
+    terminal_canvas = np.zeros((4, 4, 3), dtype=np.float32)
+    callback = EpisodeCanvasSnapshotCallback(
+        output_dir=tmp_path,
+        snapshot_interval=1,
+        verbose=0,
+    )
+    callback.model = DummyModel()
+    callback.locals = {
+        "dones": [True],
+        "infos": [{"terminal_canvas": terminal_canvas}],
+    }
+
+    assert callback._on_step()
+
+    saved = np.asarray(
+        Image.open(tmp_path / "snapshots" / "episode_00001.png"),
+        dtype=np.uint8,
+    )
+    assert saved.mean() == 0.0
 
 
 def test_run_deterministic_rollout_records_triangle_parameters():

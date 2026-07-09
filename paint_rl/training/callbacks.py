@@ -45,8 +45,17 @@ class EpisodeCanvasSnapshotCallback(BaseCallback):
         if self.episode_count % self.snapshot_interval != 0:
             return True
 
-        env = unwrap_env(self.training_env.envs[0])
-        canvas = np.copy(env.canvas)
+        infos = self.locals.get("infos")
+        terminal_canvas = (
+            infos[0].get("terminal_canvas")
+            if infos is not None and len(infos) > 0
+            else None
+        )
+        if terminal_canvas is None:
+            env = unwrap_env(self.training_env.envs[0])
+            canvas = np.copy(env.canvas)
+        else:
+            canvas = np.copy(terminal_canvas)
         snapshot_path = self.snapshot_dir / f"episode_{self.episode_count:05d}.png"
         save_canvas(canvas, snapshot_path)
 

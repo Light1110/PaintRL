@@ -67,3 +67,36 @@ def test_episode_truncates_at_max_steps():
     assert not terminated
     assert truncated
     assert info["step"] == 1
+
+
+def test_terminal_info_includes_canvas_snapshot_copy():
+    target = np.zeros((16, 16, 3), dtype=np.float32)
+    env = TrianglePaintEnv(target_image=target, image_size=16, max_steps=1)
+    env.reset(seed=123)
+
+    action = np.array(
+        [
+            0.1,
+            0.1,
+            0.9,
+            0.1,
+            0.5,
+            0.9,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+        ],
+        dtype=np.float32,
+    )
+    _, _, terminated, truncated, info = env.step(action)
+
+    assert not terminated
+    assert truncated
+    terminal_canvas = info["terminal_canvas"]
+    np.testing.assert_allclose(terminal_canvas, env.canvas)
+    assert not np.shares_memory(terminal_canvas, env.canvas)
+
+    env.reset(seed=456)
+
+    assert not np.allclose(terminal_canvas, env.canvas)
