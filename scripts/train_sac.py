@@ -29,6 +29,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--total-timesteps", type=int, default=10_000)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--check-env", action="store_true")
+    parser.add_argument(
+        "--device",
+        default="auto",
+        help="PyTorch device for SAC (e.g. auto, cpu, cuda, cuda:0, cuda:1).",
+    )
     return parser.parse_args()
 
 
@@ -37,6 +42,7 @@ def build_model(
     seed: int,
     total_timesteps: int,
     max_steps: int,
+    device: str = "auto",
 ) -> SAC:
     buffer_size = min(total_timesteps, max_steps * 50)
     policy_kwargs = {
@@ -53,6 +59,7 @@ def build_model(
         learning_starts=min(100, total_timesteps // 10),
         buffer_size=buffer_size,
         batch_size=max(2, min(64, total_timesteps)),
+        device=device,
     )
 
 
@@ -105,6 +112,7 @@ def main() -> None:
         seed=args.seed,
         total_timesteps=args.total_timesteps,
         max_steps=args.max_steps,
+        device=args.device,
     )
     model.learn(total_timesteps=args.total_timesteps)
 

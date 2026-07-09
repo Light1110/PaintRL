@@ -57,6 +57,18 @@ Train on a non-square canvas:
 python -m scripts.train_sac --image-width 96 --image-height 64 --total-timesteps 10000 --output-dir outputs/sac_96x64
 ```
 
+Use a specific GPU on a multi-GPU machine:
+
+```powershell
+python -m scripts.train_sac --device cuda:1 --total-timesteps 10000 --output-dir outputs/sac_gpu1
+```
+
+Force CPU training:
+
+```powershell
+python -m scripts.train_sac --device cpu --total-timesteps 10000 --output-dir outputs/sac_cpu
+```
+
 Resolution arguments:
 
 - `--image-width` and `--image-height` define the canvas resolution.
