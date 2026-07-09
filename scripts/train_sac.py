@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -14,6 +15,8 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from paint_rl.envs import TrianglePaintEnv
 from paint_rl.models import PaintCNNFeaturesExtractor
+from paint_rl.training import EpisodeCanvasSnapshotCallback
+from paint_rl.utils.actions import decode_triangle_action
 from paint_rl.utils.image import load_target_image, save_canvas
 from scripts.random_demo import make_demo_target
 
@@ -28,6 +31,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-steps", type=int, default=200)
     parser.add_argument("--total-timesteps", type=int, default=10_000)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument(
+        "--snapshot-interval",
+        type=int,
+        default=10,
+        help="Save a canvas snapshot every N completed episodes. Set to 0 to disable.",
+    )
     parser.add_argument("--check-env", action="store_true")
     parser.add_argument(
         "--device",
@@ -81,6 +90,41 @@ def resolve_dimensions(args: argparse.Namespace) -> tuple[int, int]:
     return image_width, image_height
 
 
+def run_deterministic_rollout(
+    env: TrianglePaintEnv,
+    model: SAC,
+    *,
+    max_steps: int,
+    seed: int,
+) -> dict[str, object]:
+    observation, _ = env.reset(seed=seed)
+    steps: list[dict[str, object]] = []
+
+    for _ in range(max_steps):
+        action, _ = model.predict(observation, deterministic=True)
+        observation, _, terminated, truncated, info = env.step(action)
+        decoded = decode_triangle_action(
+            action,
+            alpha_min=float(env.alpha_min),
+            alpha_max=float(env.alpha_max),
+        )
+        steps.append(
+            {
+                "step": int(info["step"]),
+                **decoded,
+                "mse": float(info["mse"]),
+            }
+        )
+        if terminated or truncated:
+            break
+
+    return {
+        "seed": seed,
+        "max_steps": max_steps,
+        "steps": steps,
+    }
+
+
 def main() -> None:
     args = parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -106,6 +150,9 @@ def main() -> None:
     if args.check_env:
         check_env(env, warn=True)
 
+    target_path = args.output_dir / "target.png"
+    save_canvas(target, target_path)
+
     monitored_env = Monitor(env)
     model = build_model(
         monitored_env,
@@ -114,22 +161,32 @@ def main() -> None:
         max_steps=args.max_steps,
         device=args.device,
     )
-    model.learn(total_timesteps=args.total_timesteps)
+    callback = EpisodeCanvasSnapshotCallback(
+        output_dir=args.output_dir,
+        snapshot_interval=args.snapshot_interval,
+        verbose=1,
+    )
+    model.learn(total_timesteps=args.total_timesteps, callback=callback)
 
     model_path = args.output_dir / "triangle_sac_model"
     model.save(model_path)
 
-    observation, _ = env.reset(seed=args.seed)
-    for _ in range(args.max_steps):
-        action, _ = model.predict(observation, deterministic=True)
-        observation, _, terminated, truncated, _ = env.step(action)
-        if terminated or truncated:
-            break
-
+    rollout = run_deterministic_rollout(
+        env,
+        model,
+        max_steps=args.max_steps,
+        seed=args.seed,
+    )
     save_canvas(env.canvas, args.output_dir / "final_canvas.png")
-    save_canvas(target, args.output_dir / "target.png")
+
+    rollout_path = args.output_dir / "final_rollout.json"
+    with rollout_path.open("w", encoding="utf-8") as rollout_file:
+        json.dump(rollout, rollout_file, indent=2)
+
     print(f"Saved model to {model_path}.zip")
+    print(f"Saved target to {target_path}")
     print(f"Saved final canvas to {args.output_dir / 'final_canvas.png'}")
+    print(f"Saved rollout actions to {rollout_path}")
 
 
 if __name__ == "__main__":

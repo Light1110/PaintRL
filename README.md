@@ -77,9 +77,19 @@ Resolution arguments:
 
 Outputs include:
 
+- `target.png`: the resized target used by the environment, saved at training start.
 - `triangle_sac_model.zip`: the saved SAC model.
+- `snapshots/episode_XXXXX.png`: periodic snapshots of the final canvas from completed training episodes.
 - `final_canvas.png`: the deterministic rollout after training.
-- `target.png`: the resized target used by the environment.
+- `final_rollout.json`: per-step triangle parameters from the deterministic rollout.
+
+Snapshot interval:
+
+```powershell
+python -m scripts.train_sac --snapshot-interval 10 --output-dir outputs/sac
+```
+
+Set `--snapshot-interval 0` to disable training snapshots.
 
 ## Environment
 
