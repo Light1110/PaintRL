@@ -5,8 +5,85 @@ from PIL import Image
 from stable_baselines3.common.monitor import Monitor
 
 from paint_rl.envs import TrianglePaintEnv
-from paint_rl.training import EpisodeCanvasSnapshotCallback
+from paint_rl.training import EpisodeCanvasSnapshotCallback, EpisodeTrainingLogCallback
 from scripts.train_sac import build_model, run_deterministic_rollout
+
+
+def test_episode_training_log_callback_writes_episode_metrics(tmp_path: Path):
+    callback = EpisodeTrainingLogCallback(output_dir=tmp_path)
+
+    callback.locals = {
+        "dones": [False],
+        "infos": [
+            {
+                "mse": np.float32(0.75),
+                "step_reward": np.float32(0.5),
+                "terminal_reward": np.float32(0.0),
+                "mean_pixel_improvement": np.float32(0.25),
+            }
+        ],
+        "rewards": [np.float32(0.5)],
+    }
+    assert callback._on_step()
+
+    callback.locals = {
+        "dones": [True],
+        "infos": [
+            {
+                "mse": np.float32(0.25),
+                "step_reward": np.float32(0.75),
+                "terminal_reward": np.float32(-1.5),
+                "mean_pixel_improvement": np.float32(0.125),
+            }
+        ],
+        "rewards": [np.float32(-0.75)],
+    }
+    assert callback._on_step()
+
+    log_text = (tmp_path / "episode_metrics.txt").read_text(encoding="utf-8")
+    assert "episode=1" in log_text
+    assert "steps=2" in log_text
+    assert "episode_reward=-0.250000" in log_text
+    assert "step_reward_total=1.250000" in log_text
+    assert "terminal_reward=-1.500000" in log_text
+    assert "final_mse=0.250000" in log_text
+    assert "mean_pixel_improvement_total=0.375000" in log_text
+
+
+def test_episode_training_log_callback_resets_accumulators_between_episodes(
+    tmp_path: Path,
+):
+    callback = EpisodeTrainingLogCallback(output_dir=tmp_path)
+
+    for mse, step_reward, terminal_reward, reward in [
+        (0.5, 1.0, -0.25, 0.75),
+        (0.25, 2.0, -0.5, 1.5),
+    ]:
+        callback.locals = {
+            "dones": [True],
+            "infos": [
+                {
+                    "mse": np.float32(mse),
+                    "step_reward": np.float32(step_reward),
+                    "terminal_reward": np.float32(terminal_reward),
+                    "mean_pixel_improvement": np.float32(step_reward / 10.0),
+                }
+            ],
+            "rewards": [np.float32(reward)],
+        }
+        assert callback._on_step()
+
+    log_lines = (tmp_path / "episode_metrics.txt").read_text(
+        encoding="utf-8"
+    ).splitlines()
+    assert len(log_lines) == 2
+    assert "episode=1" in log_lines[0]
+    assert "step_reward_total=1.000000" in log_lines[0]
+    assert "episode_reward=0.750000" in log_lines[0]
+    assert "episode=2" in log_lines[1]
+    assert "steps=1" in log_lines[1]
+    assert "step_reward_total=2.000000" in log_lines[1]
+    assert "episode_reward=1.500000" in log_lines[1]
 
 
 def test_episode_canvas_snapshot_callback_saves_on_interval(tmp_path: Path):

@@ -15,7 +15,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from paint_rl.envs import TrianglePaintEnv
 from paint_rl.models import PaintCNNFeaturesExtractor
-from paint_rl.training import EpisodeCanvasSnapshotCallback
+from paint_rl.training import EpisodeCanvasSnapshotCallback, EpisodeTrainingLogCallback
 from paint_rl.utils.actions import decode_triangle_action
 from paint_rl.utils.image import load_target_image, save_canvas
 from scripts.random_demo import make_demo_target
@@ -167,12 +167,16 @@ def main() -> None:
         max_steps=args.max_steps,
         device=args.device,
     )
-    callback = EpisodeCanvasSnapshotCallback(
+    snapshot_callback = EpisodeCanvasSnapshotCallback(
         output_dir=args.output_dir,
         snapshot_interval=args.snapshot_interval,
         verbose=1,
     )
-    model.learn(total_timesteps=args.total_timesteps, callback=callback)
+    log_callback = EpisodeTrainingLogCallback(output_dir=args.output_dir)
+    model.learn(
+        total_timesteps=args.total_timesteps,
+        callback=[snapshot_callback, log_callback],
+    )
 
     model_path = args.output_dir / "triangle_sac_model"
     model.save(model_path)
@@ -193,6 +197,7 @@ def main() -> None:
     print(f"Saved target to {target_path}")
     print(f"Saved final canvas to {args.output_dir / 'final_canvas.png'}")
     print(f"Saved rollout actions to {rollout_path}")
+    print(f"Saved episode metrics to {log_callback.log_path}")
 
 
 if __name__ == "__main__":

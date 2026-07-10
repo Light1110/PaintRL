@@ -79,6 +79,7 @@ Outputs include:
 
 - `target.png`: the resized target used by the environment, saved at training start.
 - `triangle_sac_model.zip`: the saved SAC model.
+- `episode_metrics.txt`: per-episode training metrics with reward breakdowns and final MSE.
 - `snapshots/episode_XXXXX.png`: periodic snapshots of the final canvas from completed training episodes.
 - `final_canvas.png`: the deterministic rollout after training.
 - `final_rollout.json`: per-step triangle parameters from the deterministic rollout.
