@@ -109,10 +109,21 @@ x1, y1, x2, y2, x3, y3, r, g, b, alpha
 The first six values define the three triangle vertices. The next three values
 define RGB color. The final value is mapped into the configured alpha range.
 
-The reward is the improvement in mean squared error:
+The reward combines area-normalized step improvement with terminal episode quality:
 
 ```text
-reward = (old_mse - new_mse) * reward_scale
+step_reward = step_reward_scale * mean_pixel_improvement_in_triangle
+terminal_reward = episode_reward_scale * (initial_mse - final_mse) - final_mse_penalty_scale * final_mse
+reward = step_reward + terminal_reward_if_done
+```
+
+Where `mean_pixel_improvement_in_triangle` is the average per-pixel squared error
+reduction inside the rendered triangle mask.
+
+Tune reward weights during training:
+
+```powershell
+python -m scripts.train_sac --step-reward-scale 1.0 --episode-reward-scale 100.0 --final-mse-penalty-scale 200.0 --output-dir outputs/sac
 ```
 
 ## Tests

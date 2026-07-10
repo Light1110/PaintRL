@@ -20,7 +20,10 @@ class TrianglePaintEnv(gym.Env):
         image_width: int | None = None,
         image_height: int | None = None,
         max_steps: int = 200,
-        reward_scale: float = 1000.0,
+        step_reward_scale: float | None = None,
+        episode_reward_scale: float = 100.0,
+        final_mse_penalty_scale: float = 200.0,
+        reward_scale: float | None = None,
         alpha_min: float = 0.05,
         alpha_max: float = 0.8,
         success_mse: float = 1e-4,
@@ -49,7 +52,15 @@ class TrianglePaintEnv(gym.Env):
         self.image_width = image_width
         self.image_height = image_height
         self.max_steps = max_steps
-        self.reward_scale = np.float32(reward_scale)
+        if reward_scale is not None:
+            resolved_step_reward_scale = reward_scale
+        elif step_reward_scale is not None:
+            resolved_step_reward_scale = step_reward_scale
+        else:
+            resolved_step_reward_scale = 1.0
+        self.step_reward_scale = np.float32(resolved_step_reward_scale)
+        self.episode_reward_scale = np.float32(episode_reward_scale)
+        self.final_mse_penalty_scale = np.float32(final_mse_penalty_scale)
         self.alpha_min = np.float32(alpha_min)
         self.alpha_max = np.float32(alpha_max)
         self.success_mse = np.float32(success_mse)
@@ -58,7 +69,8 @@ class TrianglePaintEnv(gym.Env):
         self.canvas = np.ones_like(self.target, dtype=np.float32)
         self.coordinate_channels = self._make_coordinate_channels()
         self.current_step = 0
-        self.current_mse = self._mse()
+        self.initial_mse = self._mse()
+        self.current_mse = self.initial_mse
 
         self.action_space = spaces.Box(
             low=0.0,
@@ -83,23 +95,47 @@ class TrianglePaintEnv(gym.Env):
         background = options.get("background", 1.0) if options else 1.0
         self.canvas = np.full_like(self.target, np.float32(background), dtype=np.float32)
         self.current_step = 0
-        self.current_mse = self._mse()
+        self.initial_mse = self._mse()
+        self.current_mse = self.initial_mse
         return self._observation(), self._info()
 
     def step(
         self, action: np.ndarray
     ) -> tuple[np.ndarray, np.float32, bool, bool, dict[str, Any]]:
         action = np.asarray(action, dtype=np.float32)
-        old_mse = self.current_mse
+        old_error = np.sum(np.square(self.canvas - self.target), axis=-1)
 
-        self._draw_triangle(action)
+        mask_bool = self._draw_triangle(action)
         self.current_step += 1
+        new_error = np.sum(np.square(self.canvas - self.target), axis=-1)
         self.current_mse = self._mse()
 
-        reward = np.float32((old_mse - self.current_mse) * self.reward_scale)
+        triangle_area = int(mask_bool.sum())
+        if triangle_area > 0:
+            mean_pixel_improvement = np.float32(
+                np.mean(old_error[mask_bool] - new_error[mask_bool])
+            )
+        else:
+            mean_pixel_improvement = np.float32(0.0)
+
+        step_reward = np.float32(self.step_reward_scale * mean_pixel_improvement)
+        terminal_reward = np.float32(0.0)
+
         terminated = bool(self.current_mse <= self.success_mse)
         truncated = bool(self.current_step >= self.max_steps and not terminated)
-        info = self._info()
+        if terminated or truncated:
+            terminal_reward = np.float32(
+                self.episode_reward_scale * (self.initial_mse - self.current_mse)
+                - self.final_mse_penalty_scale * self.current_mse
+            )
+
+        reward = np.float32(step_reward + terminal_reward)
+        info = self._info(
+            triangle_area=triangle_area,
+            mean_pixel_improvement=mean_pixel_improvement,
+            step_reward=step_reward,
+            terminal_reward=terminal_reward,
+        )
         if terminated or truncated:
             info["terminal_canvas"] = np.copy(self.canvas)
         return self._observation(), reward, terminated, truncated, info
@@ -140,7 +176,7 @@ class TrianglePaintEnv(gym.Env):
         y_grid = np.tile(y_axis[:, None], (1, self.image_width))
         return np.stack([x_grid, y_grid], axis=0).astype(np.float32)
 
-    def _draw_triangle(self, action: np.ndarray) -> None:
+    def _draw_triangle(self, action: np.ndarray) -> np.ndarray:
         clipped = np.clip(action, 0.0, 1.0)
         points = clipped[:6].reshape(3, 2)
         color = clipped[6:9].astype(np.float32)
@@ -154,17 +190,34 @@ class TrianglePaintEnv(gym.Env):
         cv2.fillPoly(mask, [pixel_points], 1)
         mask_bool = mask.astype(bool)
         if not mask_bool.any():
-            return
+            return mask_bool
 
         self.canvas[mask_bool] = (
             (1.0 - alpha) * self.canvas[mask_bool] + alpha * color
         ).astype(np.float32)
+        return mask_bool
 
     def _mse(self) -> np.float32:
         return np.float32(np.mean(np.square(self.canvas - self.target)))
 
-    def _info(self) -> dict[str, Any]:
-        return {
+    def _info(
+        self,
+        *,
+        triangle_area: int | None = None,
+        mean_pixel_improvement: np.float32 | None = None,
+        step_reward: np.float32 | None = None,
+        terminal_reward: np.float32 | None = None,
+    ) -> dict[str, Any]:
+        info: dict[str, Any] = {
             "mse": self.current_mse,
             "step": self.current_step,
         }
+        if triangle_area is not None:
+            info["triangle_area"] = triangle_area
+        if mean_pixel_improvement is not None:
+            info["mean_pixel_improvement"] = mean_pixel_improvement
+        if step_reward is not None:
+            info["step_reward"] = step_reward
+        if terminal_reward is not None:
+            info["terminal_reward"] = terminal_reward
+        return info

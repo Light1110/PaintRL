@@ -30,6 +30,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--image-height", type=int, default=None)
     parser.add_argument("--max-steps", type=int, default=200)
     parser.add_argument("--total-timesteps", type=int, default=10_000)
+    parser.add_argument("--step-reward-scale", type=float, default=1.0)
+    parser.add_argument("--episode-reward-scale", type=float, default=100.0)
+    parser.add_argument("--final-mse-penalty-scale", type=float, default=200.0)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
         "--snapshot-interval",
@@ -146,6 +149,9 @@ def main() -> None:
         image_width=image_width,
         image_height=image_height,
         max_steps=args.max_steps,
+        step_reward_scale=args.step_reward_scale,
+        episode_reward_scale=args.episode_reward_scale,
+        final_mse_penalty_scale=args.final_mse_penalty_scale,
     )
     if args.check_env:
         check_env(env, warn=True)
