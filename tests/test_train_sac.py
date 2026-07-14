@@ -8,7 +8,7 @@ from stable_baselines3.common.monitor import Monitor
 from paint_rl.config import TrainConfig, load_train_config
 from paint_rl.envs import TrianglePaintEnv
 from paint_rl.models import PaintCNNFeaturesExtractor
-from scripts.train_sac import build_model, parse_args, resolve_dimensions
+from paint_rl.cli.train import build_model, parse_args, resolve_dimensions
 
 
 def test_build_model_uses_custom_cnn_features_extractor():

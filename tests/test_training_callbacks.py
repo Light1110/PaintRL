@@ -6,7 +6,7 @@ from stable_baselines3.common.monitor import Monitor
 
 from paint_rl.envs import TrianglePaintEnv
 from paint_rl.training import EpisodeCanvasSnapshotCallback, EpisodeTrainingLogCallback
-from scripts.train_sac import build_model, run_deterministic_rollout
+from paint_rl.cli.train import build_model, run_deterministic_rollout
 
 
 def test_episode_training_log_callback_writes_episode_metrics(tmp_path: Path):

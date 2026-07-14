@@ -2,24 +2,19 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 
 from stable_baselines3 import SAC
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.monitor import Monitor
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
 from paint_rl.config import TrainConfig, load_train_config, resolve_image_dimensions
 from paint_rl.envs import TrianglePaintEnv
 from paint_rl.models import PaintCNNFeaturesExtractor
 from paint_rl.training import EpisodeCanvasSnapshotCallback, EpisodeTrainingLogCallback
 from paint_rl.utils.actions import decode_triangle_action
+from paint_rl.utils.demo import make_demo_target
 from paint_rl.utils.image import load_target_image, save_canvas
-from scripts.random_demo import make_demo_target
 
 
 def parse_args() -> argparse.Namespace:
