@@ -91,6 +91,19 @@ total_timesteps: 10000
 output_dir: ../outputs/sac_cpu
 ```
 
+### Replay buffer memory
+
+SAC training always uses a compact replay buffer for fixed-target runs; there is
+no YAML switch. The buffer stores only the current and next RGB canvases as
+`uint8`. It reconstructs the fixed target, absolute difference, and coordinate
+channels as `float32` when sampling. Canvas quantization introduces at most
+`1/255` absolute error per channel.
+
+For a 64x64 canvas and 10,000 transitions, current/next observation storage is
+reduced from about 3.36 GiB (11-channel `float32`) to 234 MiB (3-channel
+`uint8`). This buffer assumes every transition shares one fixed target and does
+not support mixing experience from multiple targets.
+
 Resolution fields:
 
 - `image_width` and `image_height` define the canvas resolution.

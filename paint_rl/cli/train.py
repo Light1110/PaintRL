@@ -4,6 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
+import numpy as np
 from stable_baselines3 import SAC
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.monitor import Monitor
@@ -11,7 +12,11 @@ from stable_baselines3.common.monitor import Monitor
 from paint_rl.config import TrainConfig, load_train_config, resolve_image_dimensions
 from paint_rl.envs import TrianglePaintEnv
 from paint_rl.models import PaintCNNFeaturesExtractor
-from paint_rl.training import EpisodeCanvasSnapshotCallback, EpisodeTrainingLogCallback
+from paint_rl.training import (
+    EpisodeCanvasSnapshotCallback,
+    EpisodeTrainingLogCallback,
+    FixedTargetReplayBuffer,
+)
 from paint_rl.utils.actions import decode_triangle_action
 from paint_rl.utils.demo import make_demo_target
 from paint_rl.utils.image import load_target_image, save_canvas
@@ -30,6 +35,7 @@ def parse_args() -> argparse.Namespace:
 
 def build_model(
     env: Monitor,
+    target_image: np.ndarray,
     seed: int,
     total_timesteps: int,
     buffer_size: int,
@@ -50,6 +56,9 @@ def build_model(
         buffer_size=buffer_size,
         batch_size=max(2, min(64, total_timesteps)),
         device=device,
+        replay_buffer_class=FixedTargetReplayBuffer,
+        replay_buffer_kwargs={"target_image": target_image},
+        optimize_memory_usage=False,
     )
 
 
@@ -129,6 +138,7 @@ def main() -> None:
     monitored_env = Monitor(env)
     model = build_model(
         monitored_env,
+        target_image=target,
         seed=config.seed,
         total_timesteps=config.total_timesteps,
         buffer_size=config.buffer_size,
