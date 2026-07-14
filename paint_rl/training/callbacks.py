@@ -82,9 +82,8 @@ class EpisodeTrainingLogCallback(BaseCallback):
     def _reset_episode_metrics(self) -> None:
         self.current_episode_steps = 0
         self.current_episode_reward = 0.0
-        self.current_step_reward_total = 0.0
-        self.current_terminal_reward_total = 0.0
-        self.current_mean_pixel_improvement_total = 0.0
+        self.current_dense_reward_total = 0.0
+        self.current_mse_improvement_total = 0.0
         self.current_final_mse = 0.0
 
     def _on_step(self) -> bool:
@@ -101,11 +100,8 @@ class EpisodeTrainingLogCallback(BaseCallback):
 
         self.current_episode_steps += 1
         self.current_episode_reward += reward
-        self.current_step_reward_total += float(info.get("step_reward", 0.0))
-        self.current_terminal_reward_total += float(info.get("terminal_reward", 0.0))
-        self.current_mean_pixel_improvement_total += float(
-            info.get("mean_pixel_improvement", 0.0)
-        )
+        self.current_dense_reward_total += float(info.get("dense_reward", 0.0))
+        self.current_mse_improvement_total += float(info.get("mse_improvement", 0.0))
         self.current_final_mse = float(info.get("mse", self.current_final_mse))
 
         if not done:
@@ -117,11 +113,9 @@ class EpisodeTrainingLogCallback(BaseCallback):
             f"episode={self.episode_count} "
             f"steps={self.current_episode_steps} "
             f"episode_reward={self.current_episode_reward:.6f} "
-            f"step_reward_total={self.current_step_reward_total:.6f} "
-            f"terminal_reward={self.current_terminal_reward_total:.6f} "
-            f"final_mse={self.current_final_mse:.6f} "
-            "mean_pixel_improvement_total="
-            f"{self.current_mean_pixel_improvement_total:.6f}"
+            f"dense_reward_total={self.current_dense_reward_total:.6f} "
+            f"mse_improvement_total={self.current_mse_improvement_total:.6f} "
+            f"final_mse={self.current_final_mse:.6f}"
         )
         with self.log_path.open("a", encoding="utf-8") as log_file:
             log_file.write(f"{log_line}\n")

@@ -79,7 +79,7 @@ Outputs include:
 
 - `target.png`: the resized target used by the environment, saved at training start.
 - `triangle_sac_model.zip`: the saved SAC model.
-- `episode_metrics.txt`: per-episode training metrics with reward breakdowns and final MSE.
+- `episode_metrics.txt`: per-episode training metrics with dense reward totals, MSE improvement, and final MSE.
 - `snapshots/episode_XXXXX.png`: periodic snapshots of the final canvas from completed training episodes.
 - `final_canvas.png`: the deterministic rollout after training.
 - `final_rollout.json`: per-step triangle parameters from the deterministic rollout.
@@ -110,21 +110,24 @@ x1, y1, x2, y2, x3, y3, r, g, b, alpha
 The first six values define the three triangle vertices. The next three values
 define RGB color. The final value is mapped into the configured alpha range.
 
-The reward combines area-normalized step improvement with terminal episode quality:
+The reward is a global dense MSE improvement signal:
 
 ```text
-step_reward = step_reward_scale * mean_pixel_improvement_in_triangle
-terminal_reward = episode_reward_scale * (initial_mse - final_mse) - final_mse_penalty_scale * final_mse
-reward = step_reward + terminal_reward_if_done
+mse_improvement = old_mse - new_mse
+reward = reward_scale * mse_improvement
 ```
 
-Where `mean_pixel_improvement_in_triangle` is the average per-pixel squared error
-reduction inside the rendered triangle mask.
+Positive rewards mean the canvas got closer to the target; negative rewards mean
+it got farther away. Over an episode without discounting:
 
-Tune reward weights during training:
+```text
+sum(reward) / reward_scale ≈ initial_mse - final_mse
+```
+
+There is no separate terminal reward pulse. Tune the reward scale during training:
 
 ```powershell
-python -m scripts.train_sac --step-reward-scale 1.0 --episode-reward-scale 100.0 --final-mse-penalty-scale 200.0 --output-dir outputs/sac
+python -m scripts.train_sac --reward-scale 1000.0 --output-dir outputs/sac
 ```
 
 ## Tests

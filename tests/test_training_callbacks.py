@@ -17,9 +17,8 @@ def test_episode_training_log_callback_writes_episode_metrics(tmp_path: Path):
         "infos": [
             {
                 "mse": np.float32(0.75),
-                "step_reward": np.float32(0.5),
-                "terminal_reward": np.float32(0.0),
-                "mean_pixel_improvement": np.float32(0.25),
+                "dense_reward": np.float32(0.5),
+                "mse_improvement": np.float32(0.0005),
             }
         ],
         "rewards": [np.float32(0.5)],
@@ -31,23 +30,23 @@ def test_episode_training_log_callback_writes_episode_metrics(tmp_path: Path):
         "infos": [
             {
                 "mse": np.float32(0.25),
-                "step_reward": np.float32(0.75),
-                "terminal_reward": np.float32(-1.5),
-                "mean_pixel_improvement": np.float32(0.125),
+                "dense_reward": np.float32(0.75),
+                "mse_improvement": np.float32(0.00075),
             }
         ],
-        "rewards": [np.float32(-0.75)],
+        "rewards": [np.float32(0.75)],
     }
     assert callback._on_step()
 
     log_text = (tmp_path / "episode_metrics.txt").read_text(encoding="utf-8")
     assert "episode=1" in log_text
     assert "steps=2" in log_text
-    assert "episode_reward=-0.250000" in log_text
-    assert "step_reward_total=1.250000" in log_text
-    assert "terminal_reward=-1.500000" in log_text
+    assert "episode_reward=1.250000" in log_text
+    assert "dense_reward_total=1.250000" in log_text
+    assert "mse_improvement_total=0.001250" in log_text
     assert "final_mse=0.250000" in log_text
-    assert "mean_pixel_improvement_total=0.375000" in log_text
+    assert "terminal_reward" not in log_text
+    assert "step_reward_total" not in log_text
 
 
 def test_episode_training_log_callback_resets_accumulators_between_episodes(
@@ -55,18 +54,17 @@ def test_episode_training_log_callback_resets_accumulators_between_episodes(
 ):
     callback = EpisodeTrainingLogCallback(output_dir=tmp_path)
 
-    for mse, step_reward, terminal_reward, reward in [
-        (0.5, 1.0, -0.25, 0.75),
-        (0.25, 2.0, -0.5, 1.5),
+    for mse, dense_reward, mse_improvement, reward in [
+        (0.5, 1.0, 0.001, 1.0),
+        (0.25, 2.0, 0.002, 2.0),
     ]:
         callback.locals = {
             "dones": [True],
             "infos": [
                 {
                     "mse": np.float32(mse),
-                    "step_reward": np.float32(step_reward),
-                    "terminal_reward": np.float32(terminal_reward),
-                    "mean_pixel_improvement": np.float32(step_reward / 10.0),
+                    "dense_reward": np.float32(dense_reward),
+                    "mse_improvement": np.float32(mse_improvement),
                 }
             ],
             "rewards": [np.float32(reward)],
@@ -78,12 +76,14 @@ def test_episode_training_log_callback_resets_accumulators_between_episodes(
     ).splitlines()
     assert len(log_lines) == 2
     assert "episode=1" in log_lines[0]
-    assert "step_reward_total=1.000000" in log_lines[0]
-    assert "episode_reward=0.750000" in log_lines[0]
+    assert "dense_reward_total=1.000000" in log_lines[0]
+    assert "mse_improvement_total=0.001000" in log_lines[0]
+    assert "episode_reward=1.000000" in log_lines[0]
     assert "episode=2" in log_lines[1]
     assert "steps=1" in log_lines[1]
-    assert "step_reward_total=2.000000" in log_lines[1]
-    assert "episode_reward=1.500000" in log_lines[1]
+    assert "dense_reward_total=2.000000" in log_lines[1]
+    assert "mse_improvement_total=0.002000" in log_lines[1]
+    assert "episode_reward=2.000000" in log_lines[1]
 
 
 def test_episode_canvas_snapshot_callback_saves_on_interval(tmp_path: Path):

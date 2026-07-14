@@ -30,6 +30,15 @@ def test_build_model_caps_buffer_size_at_existing_max_steps_limit():
 
     model = build_model(env, seed=0, total_timesteps=1_000, max_steps=5)
 
+    assert model.buffer_size == 1000
+
+
+def test_build_model_caps_buffer_size_with_long_horizon():
+    target = np.zeros((16, 16, 3), dtype=np.float32)
+    env = Monitor(TrianglePaintEnv(target_image=target, image_size=16, max_steps=5))
+
+    model = build_model(env, seed=0, total_timesteps=10_000, max_steps=5)
+
     assert model.buffer_size == 2500
 
 
