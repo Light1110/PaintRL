@@ -8,6 +8,7 @@ The current version uses:
 - `Gymnasium` for the custom environment.
 - `Stable-Baselines3` SAC for continuous control with a custom CNN feature extractor.
 - `Pillow` and `OpenCV` for image loading and triangle rendering.
+- YAML config files for demo and training inputs.
 
 ## Install
 
@@ -17,63 +18,84 @@ python -m venv .venv
 python -m pip install -e ".[dev]"
 ```
 
+## Configuration
+
+Scripts accept a single required argument: `--config <path-to-yaml>`.
+
+Relative paths inside a config file are resolved from that YAML file's directory.
+The bundled examples under `configs/` therefore use `../outputs/...` so artifacts
+still land in the project `outputs/` folder when run from the repo root.
+
 ## Random Demo
 
-Run a quick rendering smoke test with random triangles:
+Run a quick rendering smoke test with the bundled config:
 
 ```powershell
-python -m scripts.random_demo --steps 200 --output outputs/random_demo.png
+python -m scripts.random_demo --config configs/random_demo.yaml
 ```
 
-Use your own target image:
+Use your own target image by editing the config (paths relative to the YAML file):
 
-```powershell
-python -m scripts.random_demo --target path\to\mona_lisa.png --output outputs/random_mona.png
+```yaml
+target: ../path/to/mona_lisa.png
+output: ../outputs/random_mona.png
 ```
 
-Run with a non-square canvas:
+Run with a non-square canvas by setting width/height in the config:
 
-```powershell
-python -m scripts.random_demo --image-width 96 --image-height 64 --steps 200 --output outputs/random_demo_96x64.png
+```yaml
+image_width: 96
+image_height: 64
+steps: 200
+output: ../outputs/random_demo_96x64.png
 ```
 
 ## Train SAC
 
-Run a short training job with the built-in demo target:
+Run a short training job with the bundled config:
 
 ```powershell
-python -m scripts.train_sac --total-timesteps 10000 --output-dir outputs/sac
+python -m scripts.train_sac --config configs/train_sac.yaml
 ```
 
 Train against a custom target image:
 
-```powershell
-python -m scripts.train_sac --target path\to\mona_lisa.png --total-timesteps 10000 --output-dir outputs/mona_sac
+```yaml
+target: ../path/to/mona_lisa.png
+total_timesteps: 10000
+output_dir: ../outputs/mona_sac
 ```
 
 Train on a non-square canvas:
 
-```powershell
-python -m scripts.train_sac --image-width 96 --image-height 64 --total-timesteps 10000 --output-dir outputs/sac_96x64
+```yaml
+image_width: 96
+image_height: 64
+total_timesteps: 10000
+output_dir: ../outputs/sac_96x64
 ```
 
 Use a specific GPU on a multi-GPU machine:
 
-```powershell
-python -m scripts.train_sac --device cuda:1 --total-timesteps 10000 --output-dir outputs/sac_gpu1
+```yaml
+device: cuda:1
+total_timesteps: 10000
+output_dir: ../outputs/sac_gpu1
 ```
 
 Force CPU training:
 
-```powershell
-python -m scripts.train_sac --device cpu --total-timesteps 10000 --output-dir outputs/sac_cpu
+```yaml
+device: cpu
+total_timesteps: 10000
+output_dir: ../outputs/sac_cpu
 ```
 
-Resolution arguments:
+Resolution fields:
 
-- `--image-width` and `--image-height` define the canvas resolution.
-- `--image-size` remains as a backward-compatible square shortcut.
-- If only one of `--image-width`/`--image-height` is provided, the other defaults to the same value.
+- `image_width` and `image_height` define the canvas resolution.
+- `image_size` remains as a backward-compatible square shortcut.
+- If only one of `image_width`/`image_height` is provided, the other defaults to the same value.
 
 Outputs include:
 
@@ -86,11 +108,12 @@ Outputs include:
 
 Snapshot interval:
 
-```powershell
-python -m scripts.train_sac --snapshot-interval 10 --output-dir outputs/sac
+```yaml
+snapshot_interval: 10
+output_dir: ../outputs/sac
 ```
 
-Set `--snapshot-interval 0` to disable training snapshots.
+Set `snapshot_interval: 0` to disable training snapshots.
 
 ## Environment
 
@@ -124,10 +147,11 @@ it got farther away. Over an episode without discounting:
 sum(reward) / reward_scale ≈ initial_mse - final_mse
 ```
 
-There is no separate terminal reward pulse. Tune the reward scale during training:
+There is no separate terminal reward pulse. Tune the reward scale in the training config:
 
-```powershell
-python -m scripts.train_sac --reward-scale 1000.0 --output-dir outputs/sac
+```yaml
+reward_scale: 1000.0
+output_dir: ../outputs/sac
 ```
 
 ## Tests

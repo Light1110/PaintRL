@@ -13,6 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from paint_rl.config import TrainConfig, load_train_config, resolve_image_dimensions
 from paint_rl.envs import TrianglePaintEnv
 from paint_rl.models import PaintCNNFeaturesExtractor
 from paint_rl.training import EpisodeCanvasSnapshotCallback, EpisodeTrainingLogCallback
@@ -23,26 +24,11 @@ from scripts.random_demo import make_demo_target
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train SAC to paint with triangles.")
-    parser.add_argument("--target", type=Path, default=None, help="Path to target image.")
-    parser.add_argument("--output-dir", type=Path, default=Path("outputs/sac"))
-    parser.add_argument("--image-size", type=int, default=64)
-    parser.add_argument("--image-width", type=int, default=None)
-    parser.add_argument("--image-height", type=int, default=None)
-    parser.add_argument("--max-steps", type=int, default=200)
-    parser.add_argument("--total-timesteps", type=int, default=10_000)
-    parser.add_argument("--reward-scale", type=float, default=1000.0)
-    parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
-        "--snapshot-interval",
-        type=int,
-        default=10,
-        help="Save a canvas snapshot every N completed episodes. Set to 0 to disable.",
-    )
-    parser.add_argument("--check-env", action="store_true")
-    parser.add_argument(
-        "--device",
-        default="auto",
-        help="PyTorch device for SAC (e.g. auto, cpu, cuda, cuda:0, cuda:1).",
+        "--config",
+        type=Path,
+        required=True,
+        help="Path to a YAML training config file.",
     )
     return parser.parse_args()
 
@@ -73,22 +59,12 @@ def build_model(
     )
 
 
-def resolve_dimensions(args: argparse.Namespace) -> tuple[int, int]:
-    image_width = args.image_width
-    image_height = args.image_height
-    if image_width is None and image_height is None:
-        image_width = args.image_size
-        image_height = args.image_size
-    elif image_width is None:
-        image_width = image_height
-    elif image_height is None:
-        image_height = image_width
-
-    if image_width is None or image_height is None:
-        raise ValueError("image dimensions must be resolved")
-    if image_width <= 0 or image_height <= 0:
-        raise ValueError("image_width and image_height must be positive")
-    return image_width, image_height
+def resolve_dimensions(config: TrainConfig) -> tuple[int, int]:
+    return resolve_image_dimensions(
+        image_size=config.image_size,
+        image_width=config.image_width,
+        image_height=config.image_height,
+    )
 
 
 def run_deterministic_rollout(
@@ -128,70 +104,71 @@ def run_deterministic_rollout(
 
 def main() -> None:
     args = parse_args()
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-    image_width, image_height = resolve_dimensions(args)
+    config = load_train_config(args.config)
+    config.output_dir.mkdir(parents=True, exist_ok=True)
+    image_width, image_height = resolve_dimensions(config)
 
     target = (
         load_target_image(
-            args.target,
-            image_size=args.image_size,
+            config.target,
+            image_size=config.image_size,
             image_width=image_width,
             image_height=image_height,
         )
-        if args.target
+        if config.target
         else make_demo_target(image_width, image_height)
     )
     env = TrianglePaintEnv(
         target_image=target,
-        image_size=args.image_size,
+        image_size=config.image_size,
         image_width=image_width,
         image_height=image_height,
-        max_steps=args.max_steps,
-        reward_scale=args.reward_scale,
+        max_steps=config.max_steps,
+        reward_scale=config.reward_scale,
     )
-    if args.check_env:
+    if config.check_env:
         check_env(env, warn=True)
 
-    target_path = args.output_dir / "target.png"
+    target_path = config.output_dir / "target.png"
     save_canvas(target, target_path)
 
     monitored_env = Monitor(env)
     model = build_model(
         monitored_env,
-        seed=args.seed,
-        total_timesteps=args.total_timesteps,
-        max_steps=args.max_steps,
-        device=args.device,
+        seed=config.seed,
+        total_timesteps=config.total_timesteps,
+        max_steps=config.max_steps,
+        device=config.device,
     )
     snapshot_callback = EpisodeCanvasSnapshotCallback(
-        output_dir=args.output_dir,
-        snapshot_interval=args.snapshot_interval,
+        output_dir=config.output_dir,
+        snapshot_interval=config.snapshot_interval,
         verbose=1,
     )
-    log_callback = EpisodeTrainingLogCallback(output_dir=args.output_dir)
+    log_callback = EpisodeTrainingLogCallback(output_dir=config.output_dir)
     model.learn(
-        total_timesteps=args.total_timesteps,
+        total_timesteps=config.total_timesteps,
         callback=[snapshot_callback, log_callback],
     )
 
-    model_path = args.output_dir / "triangle_sac_model"
+    model_path = config.output_dir / "triangle_sac_model"
     model.save(model_path)
 
     rollout = run_deterministic_rollout(
         env,
         model,
-        max_steps=args.max_steps,
-        seed=args.seed,
+        max_steps=config.max_steps,
+        seed=config.seed,
     )
-    save_canvas(env.canvas, args.output_dir / "final_canvas.png")
+    save_canvas(env.canvas, config.output_dir / "final_canvas.png")
 
-    rollout_path = args.output_dir / "final_rollout.json"
+    rollout_path = config.output_dir / "final_rollout.json"
     with rollout_path.open("w", encoding="utf-8") as rollout_file:
         json.dump(rollout, rollout_file, indent=2)
 
     print(f"Saved model to {model_path}.zip")
     print(f"Saved target to {target_path}")
-    print(f"Saved final canvas to {args.output_dir / 'final_canvas.png'}")
+    print(f"Saved final canvas to {config.output_dir / 'final_canvas.png'}")
     print(f"Saved rollout actions to {rollout_path}")
     print(f"Saved episode metrics to {log_callback.log_path}")
 

@@ -1,0 +1,11 @@
+# Relative paths are resolved from this config file's directory.
+# Omit `target` (or set it to null) to use the built-in demo target.
+
+target: null
+output: ../outputs/random_demo.png
+image_size: 64
+# Optional overrides; if only one is set, the other mirrors it.
+image_width: null
+image_height: null
+steps: 200
+seed: 0
