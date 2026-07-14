@@ -6,6 +6,8 @@ from typing import Any
 
 import yaml
 
+from paint_rl.utils.actions import DEFAULT_SIZE_MAX, DEFAULT_SIZE_MIN
+
 
 class ConfigError(ValueError):
     """Raised when a YAML config file is invalid."""
@@ -26,6 +28,8 @@ class TrainConfig:
     snapshot_interval: int
     check_env: bool
     device: str
+    triangle_size_min: float
+    triangle_size_max: float
 
 
 @dataclass(frozen=True)
@@ -37,6 +41,8 @@ class RandomDemoConfig:
     image_height: int | None
     steps: int
     seed: int
+    triangle_size_min: float
+    triangle_size_max: float
 
 
 _TRAIN_DEFAULTS: dict[str, Any] = {
@@ -53,6 +59,8 @@ _TRAIN_DEFAULTS: dict[str, Any] = {
     "snapshot_interval": 10,
     "check_env": False,
     "device": "auto",
+    "triangle_size_min": DEFAULT_SIZE_MIN,
+    "triangle_size_max": DEFAULT_SIZE_MAX,
 }
 
 _RANDOM_DEMO_DEFAULTS: dict[str, Any] = {
@@ -63,6 +71,8 @@ _RANDOM_DEMO_DEFAULTS: dict[str, Any] = {
     "image_height": None,
     "steps": 200,
     "seed": 0,
+    "triangle_size_min": DEFAULT_SIZE_MIN,
+    "triangle_size_max": DEFAULT_SIZE_MAX,
 }
 
 
@@ -91,6 +101,10 @@ def load_train_config(config_path: Path | str) -> TrainConfig:
     )
     check_env = _bool(values["check_env"], field_name="check_env")
     device = _str(values["device"], field_name="device")
+    triangle_size_min, triangle_size_max = _triangle_size_range(
+        values["triangle_size_min"],
+        values["triangle_size_max"],
+    )
 
     return TrainConfig(
         target=target,
@@ -106,6 +120,8 @@ def load_train_config(config_path: Path | str) -> TrainConfig:
         snapshot_interval=snapshot_interval,
         check_env=check_env,
         device=device,
+        triangle_size_min=triangle_size_min,
+        triangle_size_max=triangle_size_max,
     )
 
 
@@ -124,6 +140,10 @@ def load_random_demo_config(config_path: Path | str) -> RandomDemoConfig:
     )
     steps = _positive_int(values["steps"], field_name="steps")
     seed = _int(values["seed"], field_name="seed")
+    triangle_size_min, triangle_size_max = _triangle_size_range(
+        values["triangle_size_min"],
+        values["triangle_size_max"],
+    )
 
     return RandomDemoConfig(
         target=target,
@@ -133,6 +153,8 @@ def load_random_demo_config(config_path: Path | str) -> RandomDemoConfig:
         image_height=image_height,
         steps=steps,
         seed=seed,
+        triangle_size_min=triangle_size_min,
+        triangle_size_max=triangle_size_max,
     )
 
 
@@ -238,6 +260,20 @@ def _finite_float(value: Any, *, field_name: str) -> float:
     if number != number:  # NaN
         raise ConfigError(f"{field_name} must be a finite number")
     return number
+
+
+def _triangle_size_range(
+    size_min_value: Any,
+    size_max_value: Any,
+) -> tuple[float, float]:
+    size_min = _finite_float(size_min_value, field_name="triangle_size_min")
+    size_max = _finite_float(size_max_value, field_name="triangle_size_max")
+    if not 0.0 < size_min <= size_max <= 1.0:
+        raise ConfigError(
+            "triangle_size_min/max must satisfy 0 < triangle_size_min <= "
+            "triangle_size_max <= 1"
+        )
+    return size_min, size_max
 
 
 def _bool(value: Any, *, field_name: str) -> bool:

@@ -2,83 +2,30 @@ import numpy as np
 
 from paint_rl.envs import TrianglePaintEnv
 
+# Structured action:
+# center_x, center_y, width_unit, height_unit, rotation_unit, skew_unit, r, g, b, alpha
 BLACK_TRIANGLE_ACTION = np.array(
-    [
-        0.1,
-        0.1,
-        0.9,
-        0.1,
-        0.5,
-        0.9,
-        0.0,
-        0.0,
-        0.0,
-        1.0,
-    ],
+    [0.5, 0.5, 0.3, 0.3, 0.5, 0.5, 0.0, 0.0, 0.0, 1.0],
     dtype=np.float32,
 )
 
 LARGE_BLACK_TRIANGLE_ACTION = np.array(
-    [
-        0.0,
-        0.0,
-        1.0,
-        0.0,
-        0.5,
-        1.0,
-        0.0,
-        0.0,
-        0.0,
-        1.0,
-    ],
+    [0.5, 0.5, 1.0, 1.0, 0.5, 0.5, 0.0, 0.0, 0.0, 1.0],
     dtype=np.float32,
 )
 
-DEGENERATE_TRIANGLE_ACTION = np.array(
-    [
-        0.5,
-        0.5,
-        0.5,
-        0.5,
-        0.5,
-        0.5,
-        0.0,
-        0.0,
-        0.0,
-        1.0,
-    ],
+MIN_SIZE_BLACK_TRIANGLE_ACTION = np.array(
+    [0.5, 0.5, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0, 1.0],
     dtype=np.float32,
 )
 
 WORSE_WHITE_TRIANGLE_ACTION = np.array(
-    [
-        0.1,
-        0.1,
-        0.9,
-        0.1,
-        0.5,
-        0.9,
-        1.0,
-        1.0,
-        1.0,
-        1.0,
-    ],
+    [0.5, 0.5, 0.3, 0.3, 0.5, 0.5, 1.0, 1.0, 1.0, 1.0],
     dtype=np.float32,
 )
 
-COLINEAR_TRIANGLE_ACTION = np.array(
-    [
-        0.0,
-        0.5,
-        0.5,
-        0.5,
-        1.0,
-        0.5,
-        0.0,
-        0.0,
-        0.0,
-        1.0,
-    ],
+OUT_OF_BOUNDS_BLACK_TRIANGLE_ACTION = np.array(
+    [0.0, 0.0, 1.0, 1.0, 0.5, 0.5, 0.0, 0.0, 0.0, 1.0],
     dtype=np.float32,
 )
 
@@ -225,12 +172,18 @@ def test_last_step_has_no_terminal_bonus():
     assert "terminal_reward" not in info
 
 
-def test_degenerate_triangle_does_not_crash():
+def test_minimum_size_triangle_renders_safely():
     target = np.zeros((16, 16, 3), dtype=np.float32)
-    env = TrianglePaintEnv(target_image=target, image_size=16, max_steps=5)
+    env = TrianglePaintEnv(
+        target_image=target,
+        image_size=16,
+        max_steps=5,
+        triangle_size_min=0.02,
+        triangle_size_max=1.0,
+    )
     env.reset(seed=123)
 
-    _, reward, _, _, info = env.step(COLINEAR_TRIANGLE_ACTION)
+    _, reward, _, _, info = env.step(MIN_SIZE_BLACK_TRIANGLE_ACTION)
 
     assert info["triangle_area"] >= 0
     assert np.isfinite(reward)
@@ -238,15 +191,16 @@ def test_degenerate_triangle_does_not_crash():
     assert "dense_reward" in info
 
 
-def test_coincident_triangle_covers_at_most_one_pixel():
+def test_out_of_bounds_triangle_is_cropped_without_crashing():
     target = np.zeros((16, 16, 3), dtype=np.float32)
     env = TrianglePaintEnv(target_image=target, image_size=16, max_steps=5)
     env.reset(seed=123)
 
-    _, reward, _, _, info = env.step(DEGENERATE_TRIANGLE_ACTION)
+    _, reward, _, _, info = env.step(OUT_OF_BOUNDS_BLACK_TRIANGLE_ACTION)
 
-    assert info["triangle_area"] <= 1
+    assert 0 < info["triangle_area"] < 16 * 16
     assert np.isfinite(reward)
+    assert np.all((env.canvas >= 0.0) & (env.canvas <= 1.0))
 
 
 def test_reward_scale_scales_global_mse_improvement():

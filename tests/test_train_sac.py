@@ -152,6 +152,8 @@ def test_resolve_dimensions_falls_back_to_image_size(tmp_path: Path):
         snapshot_interval=0,
         check_env=False,
         device="cpu",
+        triangle_size_min=0.02,
+        triangle_size_max=1.0,
     )
 
     assert resolve_dimensions(config) == (32, 32)

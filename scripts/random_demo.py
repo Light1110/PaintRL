@@ -48,6 +48,8 @@ def main() -> None:
         image_width=image_width,
         image_height=image_height,
         max_steps=config.steps,
+        triangle_size_min=config.triangle_size_min,
+        triangle_size_max=config.triangle_size_max,
     )
     env.reset(seed=config.seed)
 

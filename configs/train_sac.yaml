@@ -11,6 +11,9 @@ max_steps: 200
 total_timesteps: 10000
 buffer_size: 10000
 reward_scale: 1000.0
+# Structured triangle action size mapping (fraction of canvas).
+triangle_size_min: 0.02
+triangle_size_max: 1.0
 seed: 0
 # Save a canvas snapshot every N completed episodes. Set to 0 to disable.
 snapshot_interval: 10

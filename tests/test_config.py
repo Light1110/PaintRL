@@ -4,6 +4,7 @@ import pytest
 import yaml
 
 from paint_rl.config import (
+    ConfigError,
     RandomDemoConfig,
     TrainConfig,
     load_random_demo_config,
@@ -51,6 +52,38 @@ def test_load_train_config_uses_defaults_and_resolves_relative_paths(tmp_path: P
     assert config.snapshot_interval == 10
     assert config.check_env is False
     assert config.device == "auto"
+    assert config.triangle_size_min == 0.02
+    assert config.triangle_size_max == 1.0
+
+
+def test_load_train_config_reads_triangle_size_range(tmp_path: Path):
+    config_path = _write_yaml(
+        tmp_path / "train.yaml",
+        {
+            "output_dir": "outputs/sac",
+            "triangle_size_min": 0.05,
+            "triangle_size_max": 0.5,
+        },
+    )
+
+    config = load_train_config(config_path)
+
+    assert config.triangle_size_min == 0.05
+    assert config.triangle_size_max == 0.5
+
+
+def test_load_train_config_rejects_invalid_triangle_size_range(tmp_path: Path):
+    config_path = _write_yaml(
+        tmp_path / "train.yaml",
+        {
+            "output_dir": "outputs/sac",
+            "triangle_size_min": 0.8,
+            "triangle_size_max": 0.2,
+        },
+    )
+
+    with pytest.raises(ConfigError, match="triangle_size"):
+        load_train_config(config_path)
 
 
 def test_load_train_config_allows_missing_optional_target(tmp_path: Path):
@@ -93,6 +126,24 @@ def test_load_random_demo_config_resolves_paths_relative_to_config_dir(tmp_path:
     assert config.image_size == 32
     assert config.steps == 50
     assert config.seed == 7
+    assert config.triangle_size_min == 0.02
+    assert config.triangle_size_max == 1.0
+
+
+def test_load_random_demo_config_reads_triangle_size_range(tmp_path: Path):
+    config_path = _write_yaml(
+        tmp_path / "demo.yaml",
+        {
+            "output": "out.png",
+            "triangle_size_min": 0.1,
+            "triangle_size_max": 0.4,
+        },
+    )
+
+    config = load_random_demo_config(config_path)
+
+    assert config.triangle_size_min == 0.1
+    assert config.triangle_size_max == 0.4
 
 
 def test_load_train_config_rejects_unknown_fields(tmp_path: Path):

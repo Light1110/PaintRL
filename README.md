@@ -117,7 +117,8 @@ Outputs include:
 - `episode_metrics.txt`: per-episode training metrics with dense reward totals, MSE improvement, and final MSE.
 - `snapshots/episode_XXXXX.png`: periodic snapshots of the final canvas from completed training episodes.
 - `final_canvas.png`: the deterministic rollout after training.
-- `final_rollout.json`: per-step triangle parameters from the deterministic rollout.
+- `final_rollout.json`: per-step triangle parameters from the deterministic rollout
+  (`action_version: 2`, center/size/rotation/skew, decoded vertices, color, alpha).
 
 Snapshot interval:
 
@@ -137,14 +138,37 @@ Set `snapshot_interval: 0` to disable training snapshots.
 - Absolute difference RGB.
 - Absolute x/y coordinate channels.
 
-Each action is a 10-value continuous vector:
+Each action is a 10-value continuous vector (action schema version 2):
 
 ```text
-x1, y1, x2, y2, x3, y3, r, g, b, alpha
+center_x, center_y, width_unit, height_unit, rotation_unit, skew_unit, r, g, b, alpha_unit
 ```
 
-The first six values define the three triangle vertices. The next three values
-define RGB color. The final value is mapped into the configured alpha range.
+The first two values are the triangle center in normalized image coordinates.
+`width_unit` / `height_unit` map into `[triangle_size_min, triangle_size_max]`
+(defaults `0.02` / `1.0`). `rotation_unit` maps to `[−π, π]`, and `skew_unit`
+maps to `[−1, 1]`. Local vertices are:
+
+```text
+(-width/2,  height/2)
+( width/2,  height/2)
+(skew*width/2, -height/2)
+```
+
+These points are rotated around the center, then translated. Vertices may leave
+the unit square; OpenCV crops the filled polygon to the canvas. The remaining
+values are RGB color and alpha (mapped into the configured alpha range).
+
+Because width and height are bounded away from zero, every continuous action
+produces a non-degenerate triangle. Old checkpoints trained on the previous
+absolute-vertex action layout are incompatible and must be retrained.
+
+Tune size bounds in the YAML config:
+
+```yaml
+triangle_size_min: 0.02
+triangle_size_max: 1.0
+```
 
 The reward is a global dense MSE improvement signal:
 

@@ -8,4 +8,7 @@ image_size: 64
 image_width: null
 image_height: null
 steps: 200
+# Structured triangle action size mapping (fraction of canvas).
+triangle_size_min: 0.02
+triangle_size_max: 1.0
 seed: 0

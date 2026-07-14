@@ -87,6 +87,8 @@ def run_deterministic_rollout(
             action,
             alpha_min=float(env.alpha_min),
             alpha_max=float(env.alpha_max),
+            size_min=env.triangle_size_min,
+            size_max=env.triangle_size_max,
         )
         steps.append(
             {
@@ -128,6 +130,8 @@ def main() -> None:
         image_height=image_height,
         max_steps=config.max_steps,
         reward_scale=config.reward_scale,
+        triangle_size_min=config.triangle_size_min,
+        triangle_size_max=config.triangle_size_max,
     )
     if config.check_env:
         check_env(env, warn=True)

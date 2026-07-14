@@ -184,7 +184,13 @@ def test_run_deterministic_rollout_records_triangle_parameters():
 
     first_step = rollout["steps"][0]
     assert first_step["step"] == 1
+    assert first_step["action_version"] == 2
     assert len(first_step["action"]) == 10
+    assert len(first_step["center"]) == 2
+    assert isinstance(first_step["width"], float)
+    assert isinstance(first_step["height"], float)
+    assert isinstance(first_step["rotation"], float)
+    assert isinstance(first_step["skew"], float)
     assert len(first_step["vertices"]) == 3
     assert len(first_step["color"]) == 3
     assert isinstance(first_step["alpha"], float)

@@ -56,6 +56,8 @@ def test_resolve_dimensions_falls_back_to_image_size():
         image_height=None,
         steps=5,
         seed=0,
+        triangle_size_min=0.02,
+        triangle_size_max=1.0,
     )
 
     assert resolve_dimensions(config) == (16, 16)

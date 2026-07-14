@@ -7,6 +7,13 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
+from paint_rl.utils.actions import (
+    ACTION_DIM,
+    DEFAULT_SIZE_MAX,
+    DEFAULT_SIZE_MIN,
+    decode_triangle_action,
+)
+
 
 class TrianglePaintEnv(gym.Env):
     """Paint a target image by adding one transparent triangle per action."""
@@ -23,6 +30,8 @@ class TrianglePaintEnv(gym.Env):
         reward_scale: float = 1000.0,
         alpha_min: float = 0.05,
         alpha_max: float = 0.8,
+        triangle_size_min: float = DEFAULT_SIZE_MIN,
+        triangle_size_max: float = DEFAULT_SIZE_MAX,
         success_mse: float = 1e-4,
     ) -> None:
         super().__init__()
@@ -44,6 +53,10 @@ class TrianglePaintEnv(gym.Env):
             raise ValueError("max_steps must be positive")
         if not 0.0 <= alpha_min <= alpha_max <= 1.0:
             raise ValueError("alpha range must satisfy 0 <= alpha_min <= alpha_max <= 1")
+        if not 0.0 < triangle_size_min <= triangle_size_max <= 1.0:
+            raise ValueError(
+                "triangle size range must satisfy 0 < size_min <= size_max <= 1"
+            )
 
         self.image_size = image_size
         self.image_width = image_width
@@ -52,6 +65,8 @@ class TrianglePaintEnv(gym.Env):
         self.reward_scale = np.float32(reward_scale)
         self.alpha_min = np.float32(alpha_min)
         self.alpha_max = np.float32(alpha_max)
+        self.triangle_size_min = float(triangle_size_min)
+        self.triangle_size_max = float(triangle_size_max)
         self.success_mse = np.float32(success_mse)
 
         self.target = self._prepare_target(target_image)
@@ -64,7 +79,7 @@ class TrianglePaintEnv(gym.Env):
         self.action_space = spaces.Box(
             low=0.0,
             high=1.0,
-            shape=(10,),
+            shape=(ACTION_DIM,),
             dtype=np.float32,
         )
         self.observation_space = spaces.Box(
@@ -151,12 +166,18 @@ class TrianglePaintEnv(gym.Env):
         return np.stack([x_grid, y_grid], axis=0).astype(np.float32)
 
     def _draw_triangle(self, action: np.ndarray) -> np.ndarray:
-        clipped = np.clip(action, 0.0, 1.0)
-        points = clipped[:6].reshape(3, 2)
-        color = clipped[6:9].astype(np.float32)
-        alpha_unit = clipped[9]
-        alpha = self.alpha_min + alpha_unit * (self.alpha_max - self.alpha_min)
+        decoded = decode_triangle_action(
+            action,
+            alpha_min=float(self.alpha_min),
+            alpha_max=float(self.alpha_max),
+            size_min=self.triangle_size_min,
+            size_max=self.triangle_size_max,
+        )
+        points = np.asarray(decoded["vertices"], dtype=np.float32)
+        color = np.asarray(decoded["color"], dtype=np.float32)
+        alpha = np.float32(decoded["alpha"])
 
+        # Vertices may leave [0, 1]; OpenCV clips the filled polygon to the mask.
         x_points = np.rint(points[:, 0] * (self.image_width - 1))
         y_points = np.rint(points[:, 1] * (self.image_height - 1))
         pixel_points = np.stack([x_points, y_points], axis=1).astype(np.int32)
