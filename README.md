@@ -55,7 +55,7 @@ output: ../outputs/random_demo_96x64.png
 Run a short training job with the bundled config:
 
 ```powershell
-python -m scripts.train_sac --config configs/train_sac.yaml
+paint-train --config configs/train_sac.yaml
 ```
 
 Train against a custom target image:
