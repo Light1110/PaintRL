@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "paint-rl"
 version = "0.1.0"
@@ -18,6 +22,12 @@ dependencies = [
 dev = [
     "pytest>=8.0.0",
 ]
+
+[project.scripts]
+paint-train = "paint_rl.cli.train:main"
+
+[tool.setuptools.packages.find]
+include = ["paint_rl*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
