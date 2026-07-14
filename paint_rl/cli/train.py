@@ -32,10 +32,9 @@ def build_model(
     env: Monitor,
     seed: int,
     total_timesteps: int,
-    max_steps: int,
+    buffer_size: int,
     device: str = "auto",
 ) -> SAC:
-    buffer_size = min(total_timesteps, max_steps * 500)
     policy_kwargs = {
         "features_extractor_class": PaintCNNFeaturesExtractor,
         "features_extractor_kwargs": {"features_dim": 256},
@@ -132,7 +131,7 @@ def main() -> None:
         monitored_env,
         seed=config.seed,
         total_timesteps=config.total_timesteps,
-        max_steps=config.max_steps,
+        buffer_size=config.buffer_size,
         device=config.device,
     )
     snapshot_callback = EpisodeCanvasSnapshotCallback(

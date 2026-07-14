@@ -45,6 +45,7 @@ def test_load_train_config_uses_defaults_and_resolves_relative_paths(tmp_path: P
     assert config.image_height is None
     assert config.max_steps == 200
     assert config.total_timesteps == 10_000
+    assert config.buffer_size == 10_000
     assert config.reward_scale == 1000.0
     assert config.seed == 0
     assert config.snapshot_interval == 10
@@ -129,6 +130,16 @@ def test_load_train_config_rejects_non_positive_dimensions(tmp_path: Path):
     )
 
     with pytest.raises(ValueError, match="image_size"):
+        load_train_config(config_path)
+
+
+def test_load_train_config_rejects_non_positive_buffer_size(tmp_path: Path):
+    config_path = _write_yaml(
+        tmp_path / "train.yaml",
+        {"output_dir": "outputs/sac", "buffer_size": 0},
+    )
+
+    with pytest.raises(ValueError, match="buffer_size"):
         load_train_config(config_path)
 
 

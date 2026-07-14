@@ -9,6 +9,7 @@ image_width: null
 image_height: null
 max_steps: 200
 total_timesteps: 10000
+buffer_size: 10000
 reward_scale: 1000.0
 seed: 0
 # Save a canvas snapshot every N completed episodes. Set to 0 to disable.

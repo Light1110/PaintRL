@@ -15,43 +15,25 @@ def test_build_model_uses_custom_cnn_features_extractor():
     target = np.zeros((16, 16, 3), dtype=np.float32)
     env = Monitor(TrianglePaintEnv(target_image=target, image_size=16, max_steps=5))
 
-    model = build_model(env, seed=0, total_timesteps=10, max_steps=5)
+    model = build_model(env, seed=0, total_timesteps=10, buffer_size=10)
 
     assert isinstance(model.actor.features_extractor, PaintCNNFeaturesExtractor)
 
 
-def test_build_model_scales_buffer_size_with_total_timesteps():
+def test_build_model_uses_configured_buffer_size():
     target = np.zeros((16, 16, 3), dtype=np.float32)
     env = Monitor(TrianglePaintEnv(target_image=target, image_size=16, max_steps=5))
 
-    model = build_model(env, seed=0, total_timesteps=10, max_steps=5)
+    model = build_model(env, seed=0, total_timesteps=10, buffer_size=42)
 
-    assert model.buffer_size == 10
-
-
-def test_build_model_caps_buffer_size_at_existing_max_steps_limit():
-    target = np.zeros((16, 16, 3), dtype=np.float32)
-    env = Monitor(TrianglePaintEnv(target_image=target, image_size=16, max_steps=5))
-
-    model = build_model(env, seed=0, total_timesteps=1_000, max_steps=5)
-
-    assert model.buffer_size == 1000
-
-
-def test_build_model_caps_buffer_size_with_long_horizon():
-    target = np.zeros((16, 16, 3), dtype=np.float32)
-    env = Monitor(TrianglePaintEnv(target_image=target, image_size=16, max_steps=5))
-
-    model = build_model(env, seed=0, total_timesteps=10_000, max_steps=5)
-
-    assert model.buffer_size == 2500
+    assert model.buffer_size == 42
 
 
 def test_build_model_respects_device():
     target = np.zeros((16, 16, 3), dtype=np.float32)
     env = Monitor(TrianglePaintEnv(target_image=target, image_size=16, max_steps=5))
 
-    model = build_model(env, seed=0, total_timesteps=10, max_steps=5, device="cpu")
+    model = build_model(env, seed=0, total_timesteps=10, buffer_size=10, device="cpu")
 
     assert str(model.device) == "cpu"
 
@@ -105,6 +87,7 @@ def test_resolve_dimensions_falls_back_to_image_size(tmp_path: Path):
         image_height=None,
         max_steps=10,
         total_timesteps=100,
+        buffer_size=100,
         reward_scale=1.0,
         seed=0,
         snapshot_interval=0,

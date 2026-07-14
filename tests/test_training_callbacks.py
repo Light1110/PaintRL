@@ -89,7 +89,7 @@ def test_episode_training_log_callback_resets_accumulators_between_episodes(
 def test_episode_canvas_snapshot_callback_saves_on_interval(tmp_path: Path):
     target = np.zeros((16, 16, 3), dtype=np.float32)
     env = Monitor(TrianglePaintEnv(target_image=target, image_size=16, max_steps=3))
-    model = build_model(env, seed=0, total_timesteps=12, max_steps=3, device="cpu")
+    model = build_model(env, seed=0, total_timesteps=12, buffer_size=12, device="cpu")
     callback = EpisodeCanvasSnapshotCallback(
         output_dir=tmp_path,
         snapshot_interval=2,
@@ -106,7 +106,7 @@ def test_episode_canvas_snapshot_callback_saves_on_interval(tmp_path: Path):
 def test_episode_canvas_snapshot_callback_disabled_when_interval_zero(tmp_path: Path):
     target = np.zeros((16, 16, 3), dtype=np.float32)
     env = Monitor(TrianglePaintEnv(target_image=target, image_size=16, max_steps=3))
-    model = build_model(env, seed=0, total_timesteps=12, max_steps=3, device="cpu")
+    model = build_model(env, seed=0, total_timesteps=12, buffer_size=12, device="cpu")
     callback = EpisodeCanvasSnapshotCallback(
         output_dir=tmp_path,
         snapshot_interval=0,
@@ -157,7 +157,7 @@ def test_run_deterministic_rollout_records_triangle_parameters():
         Monitor(env),
         seed=0,
         total_timesteps=10,
-        max_steps=3,
+        buffer_size=10,
         device="cpu",
     )
 

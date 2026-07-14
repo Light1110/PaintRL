@@ -20,6 +20,7 @@ class TrainConfig:
     image_height: int | None
     max_steps: int
     total_timesteps: int
+    buffer_size: int
     reward_scale: float
     seed: int
     snapshot_interval: int
@@ -46,6 +47,7 @@ _TRAIN_DEFAULTS: dict[str, Any] = {
     "image_height": None,
     "max_steps": 200,
     "total_timesteps": 10_000,
+    "buffer_size": 10_000,
     "reward_scale": 1000.0,
     "seed": 0,
     "snapshot_interval": 10,
@@ -81,6 +83,7 @@ def load_train_config(config_path: Path | str) -> TrainConfig:
     total_timesteps = _positive_int(
         values["total_timesteps"], field_name="total_timesteps"
     )
+    buffer_size = _positive_int(values["buffer_size"], field_name="buffer_size")
     reward_scale = _finite_float(values["reward_scale"], field_name="reward_scale")
     seed = _int(values["seed"], field_name="seed")
     snapshot_interval = _non_negative_int(
@@ -97,6 +100,7 @@ def load_train_config(config_path: Path | str) -> TrainConfig:
         image_height=image_height,
         max_steps=max_steps,
         total_timesteps=total_timesteps,
+        buffer_size=buffer_size,
         reward_scale=reward_scale,
         seed=seed,
         snapshot_interval=snapshot_interval,
