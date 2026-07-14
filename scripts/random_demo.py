@@ -3,18 +3,10 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-import numpy as np
-
 from paint_rl.config import RandomDemoConfig, load_random_demo_config, resolve_image_dimensions
 from paint_rl.envs import TrianglePaintEnv
+from paint_rl.utils.demo import make_demo_target
 from paint_rl.utils.image import load_target_image, save_canvas
-
-
-def make_demo_target(image_width: int, image_height: int) -> np.ndarray:
-    y, x = np.mgrid[0:image_height, 0:image_width].astype(np.float32)
-    x = x / max(image_width - 1, 1)
-    y = y / max(image_height - 1, 1)
-    return np.stack([x, y, 1.0 - x], axis=-1).astype(np.float32)
 
 
 def parse_args() -> argparse.Namespace:
