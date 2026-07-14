@@ -2,6 +2,7 @@ __pycache__/
 .pytest_cache/
 .venv/
 .worktrees/
+docs/
 outputs/
 *.egg-info/
 uv.lock
